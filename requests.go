@@ -80,18 +80,18 @@ func (c *Client) req(method, path string, body io.Reader, intercept func(*http.R
 	return rs, err
 }
 
-func (c *Client) mkcol(path string) int {
+func (c *Client) mkcol(path string) (int,error) {
 	rs, err := c.req("MKCOL", path, nil, nil)
 	if err != nil {
-		return 400
+		return 400,err
 	}
 	defer rs.Body.Close()
 
 	if rs.StatusCode == 201 || rs.StatusCode == 405 {
-		return 201
+		return 201,nil
 	}
 
-	return rs.StatusCode
+	return rs.StatusCode,err
 }
 
 func (c *Client) options(path string) (*http.Response, error) {
@@ -166,14 +166,14 @@ func (c *Client) copymove(method string, oldpath string, newpath string, overwri
 	return newPathError(method, oldpath, s)
 }
 
-func (c *Client) put(path string, stream io.Reader) int {
+func (c *Client) put(path string, stream io.Reader) (int,error) {
 	rs, err := c.req("PUT", path, stream, nil)
 	if err != nil {
-		return 400
+		return 400,err
 	}
 	defer rs.Body.Close()
 
-	return rs.StatusCode
+	return rs.StatusCode,err
 }
 
 func (c *Client) createParentCollection(itemPath string) (err error) {

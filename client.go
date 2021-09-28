@@ -3,6 +3,7 @@ package gowebdav
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -270,18 +271,18 @@ func (c *Client) RemoveAll(path string) error {
 // Mkdir makes a directory
 func (c *Client) Mkdir(path string, _ os.FileMode) error {
 	path = FixSlashes(path)
-	status := c.mkcol(path)
+	status,err := c.mkcol(path)
 	if status == 201 {
 		return nil
 	}
 
-	return newPathError("Mkdir", path, status)
+	return newPathErrorErr("Mkdir", path, fmt.Errorf("%d: %w", status,err))
 }
 
 // MkdirAll like mkdir -p, but for webdav
 func (c *Client) MkdirAll(path string, _ os.FileMode) error {
 	path = FixSlashes(path)
-	status := c.mkcol(path)
+	status,err := c.mkcol(path)
 	if status == 201 {
 		return nil
 	} else if status == 409 {
@@ -292,15 +293,14 @@ func (c *Client) MkdirAll(path string, _ os.FileMode) error {
 				continue
 			}
 			sub += e + "/"
-			status = c.mkcol(sub)
+			status,err = c.mkcol(sub)
 			if status != 201 {
 				return newPathError("MkdirAll", sub, status)
 			}
 		}
 		return nil
 	}
-
-	return newPathError("MkdirAll", path, status)
+	return newPathErrorErr("MkdirAll", path, fmt.Errorf("%d: %w", status,err))
 }
 
 // Rename moves a file from A to B
@@ -343,12 +343,12 @@ func (c *Client) ReadStream(path string) (io.ReadCloser, error) {
 	}
 
 	rs.Body.Close()
-	return nil, newPathError("ReadStream", path, rs.StatusCode)
+	return nil, newPathErrorErr("ReadStream", path, fmt.Errorf("%d: %w", rs.StatusCode,err))
 }
 
 // Write writes data to a given path
 func (c *Client) Write(path string, data []byte, _ os.FileMode) error {
-	s := c.put(path, bytes.NewReader(data))
+	s,err := c.put(path, bytes.NewReader(data))
 	switch s {
 
 	case 200, 201, 204:
@@ -360,13 +360,13 @@ func (c *Client) Write(path string, data []byte, _ os.FileMode) error {
 			return err
 		}
 
-		s = c.put(path, bytes.NewReader(data))
+		s,err = c.put(path, bytes.NewReader(data))
 		if s == 200 || s == 201 || s == 204 {
 			return nil
 		}
 	}
 
-	return newPathError("Write", path, s)
+	return newPathErrorErr("Write", path, fmt.Errorf("%d: %w", s,err))
 }
 
 // WriteStream writes a stream
@@ -377,13 +377,13 @@ func (c *Client) WriteStream(path string, stream io.Reader, _ os.FileMode) error
 		return err
 	}
 
-	s := c.put(path, stream)
+	s,err := c.put(path, stream)
 
 	switch s {
 	case 200, 201, 204:
 		return nil
 
 	default:
-		return newPathError("WriteStream", path, s)
+		return newPathErrorErr("WriteStream", path, fmt.Errorf("%d: %w", s,err))
 	}
 }
